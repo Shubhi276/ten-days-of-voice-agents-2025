@@ -1,3 +1,5 @@
+import json
+from typing import Annotated
 import logging
 
 from dotenv import load_dotenv
@@ -12,8 +14,9 @@ from livekit.agents import (
     cli,
     metrics,
     tokenize,
-    # function_tool,
-    # RunContext
+    llm,
+    function_tool,
+    RunContext,
 )
 from livekit.plugins import murf, silero, google, deepgram, noise_cancellation
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
@@ -26,34 +29,44 @@ load_dotenv(".env.local")
 class Assistant(Agent):
     def __init__(self) -> None:
         super().__init__(
-            instructions="""You are a helpful voice AI assistant. The user is interacting with you via voice, even if you perceive the conversation as text.
-            You eagerly assist users with their questions by providing information from your extensive knowledge.
-            Your responses are concise, to the point, and without any complex formatting or punctuation including emojis, asterisks, or other symbols.
-            You are curious, friendly, and have a sense of humor.""",
+            instructions="""You are a friendly Barista at 'Murf Coffee'. 
+            Your job is to take the customer's order. 
+            You MUST collect these 5 pieces of info: Drink Type, Size, Milk, Extras, and their Name. 
+            Ask clarifying questions one by one. Do not assume anything. 
+            Once you have ALL 5 details, you MUST call the 'save_order' function immediately. 
+            After saving, thank the customer.""",
         )
 
-    # To add tools, use the @function_tool decorator.
-    # Here's an example that adds a simple weather tool.
-    # You also have to add `from livekit.agents import function_tool, RunContext` to the top of this file
-    # @function_tool
-    # async def lookup_weather(self, context: RunContext, location: str):
-    #     """Use this tool to look up current weather information in the given location.
-    #
-    #     If the location is not supported by the weather service, the tool will indicate this. You must tell the user the location's weather is unavailable.
-    #
-    #     Args:
-    #         location: The location to look up weather information for (e.g. city name)
-    #     """
-    #
-    #     logger.info(f"Looking up weather for {location}")
-    #
-    #     return "sunny with a temperature of 70 degrees."
+    @function_tool
+    def save_order(
+        self,
+        ctx: RunContext,
+        drink: Annotated[str, "Drink type (Latte, Cappuccino, etc)"],
+        size: Annotated[str, "Size (Small, Medium, Large)"],
+        milk: Annotated[str, "Milk choice (Whole, Oat, Almond)"],
+        extras: Annotated[str, "Extras (Sugar, None)"],
+        name: Annotated[str, "Customer Name"]
+    ):
+        """Save the order when all details (drink, size, milk, extras, name) are collected."""
+        print(f"Saving order for {name}")
+        
+        # This creates the order.json file automatically
+        with open("order.json", "w") as f:
+            json.dump({
+                "name": name, 
+                "drink": drink, 
+                "size": size, 
+                "milk": milk, 
+                "extras": extras
+            }, f, indent=2)
+            
+        return "Order saved! Tell the customer their coffee will be ready soon."
 
 
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
 
-
+    
 async def entrypoint(ctx: JobContext):
     # Logging setup
     # Add any other context you want in all log entries here
