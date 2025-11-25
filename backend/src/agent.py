@@ -1,4 +1,6 @@
 import logging
+import json
+import os
 
 from dotenv import load_dotenv
 from livekit.agents import (
@@ -6,16 +8,12 @@ from livekit.agents import (
     AgentSession,
     JobContext,
     JobProcess,
-    MetricsCollectedEvent,
     RoomInputOptions,
     WorkerOptions,
     cli,
-    metrics,
     tokenize,
-    # function_tool,
-    # RunContext
 )
-from livekit.plugins import murf, silero, google, deepgram, noise_cancellation
+from livekit.plugins import murf, deepgram, google, silero, noise_cancellation
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 logger = logging.getLogger("agent")
@@ -23,115 +21,146 @@ logger = logging.getLogger("agent")
 load_dotenv(".env.local")
 
 
-class Assistant(Agent):
-    def __init__(self) -> None:
+# -------------------------
+# Load Course Content
+# -------------------------
+CONTENT_FILE = "shared-data/day4_tutor_content.json"
+with open(CONTENT_FILE, "r") as f:
+    COURSE_CONTENT = json.load(f)
+
+
+def get_concept(concept_id):
+    for c in COURSE_CONTENT:
+        if c["id"] == concept_id:
+            return c
+    return None
+
+
+# -------------------------
+# Agent Class
+# -------------------------
+class TutorAgent(Agent):
+    def __init__(self):
         super().__init__(
-            instructions="""You are a helpful voice AI assistant. The user is interacting with you via voice, even if you perceive the conversation as text.
-            You eagerly assist users with their questions by providing information from your extensive knowledge.
-            Your responses are concise, to the point, and without any complex formatting or punctuation including emojis, asterisks, or other symbols.
-            You are curious, friendly, and have a sense of humor.""",
+            instructions=(
+                "You are an Active Recall Coach. "
+                "The user will choose a mode: learn, quiz, or teach_back. "
+                "Use the JSON course content when responding. "
+                "Do NOT use special formatting like emojis or lists. "
+            )
+        )
+        self.mode = None
+        self.current_concept = "variables"  # default concept
+
+    async def on_user_message(self, msg, ctx):
+        text = msg.text.lower()
+
+        # MODE SWITCHING
+        if "learn" in text:
+            self.mode = "learn"
+            await ctx.send_message("Learn mode activated. Tell me a concept name to begin.")
+            return
+
+        if "quiz" in text:
+            self.mode = "quiz"
+            await ctx.send_message("Quiz mode activated. Which concept should I quiz you on.")
+            return
+
+        if "teach back" in text or "teachback" in text:
+            self.mode = "teach_back"
+            await ctx.send_message("Teach back mode activated. Which concept will you explain.")
+            return
+
+        # SELECT CONCEPT
+        for c in COURSE_CONTENT:
+            if c["id"] in text or c["title"].lower() in text:
+                self.current_concept = c["id"]
+                await ctx.send_message(f"Concept set to {c['title']}.")
+                break
+
+        concept = get_concept(self.current_concept)
+
+        # -------------------------
+        # LEARN MODE
+        # -------------------------
+        if self.mode == "learn":
+            await ctx.send_message(f"Here is the explanation. {concept['summary']}")
+            return
+
+        # -------------------------
+        # QUIZ MODE
+        # -------------------------
+        if self.mode == "quiz":
+            await ctx.send_message(f"Here is your question. {concept['sample_question']}")
+            return
+
+        # -------------------------
+        # TEACH BACK MODE
+        # -------------------------
+        if self.mode == "teach_back":
+            # Give qualitative feedback to user's explanation
+            user_answer = msg.text.strip()
+            if len(user_answer) < 10:
+                await ctx.send_message("Try giving a little more detailed explanation.")
+                return
+
+            await ctx.send_message("Thanks for explaining. You covered this concept reasonably well. Keep improving.")
+            return
+
+        # Default fallback
+        await ctx.send_message(
+            "Welcome to Teach the Tutor. Choose learn, quiz, or teach back to begin."
         )
 
-    # To add tools, use the @function_tool decorator.
-    # Here's an example that adds a simple weather tool.
-    # You also have to add `from livekit.agents import function_tool, RunContext` to the top of this file
-    # @function_tool
-    # async def lookup_weather(self, context: RunContext, location: str):
-    #     """Use this tool to look up current weather information in the given location.
-    #
-    #     If the location is not supported by the weather service, the tool will indicate this. You must tell the user the location's weather is unavailable.
-    #
-    #     Args:
-    #         location: The location to look up weather information for (e.g. city name)
-    #     """
-    #
-    #     logger.info(f"Looking up weather for {location}")
-    #
-    #     return "sunny with a temperature of 70 degrees."
 
-
+# -------------------------
+# Prewarm
+# -------------------------
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
 
 
+# -------------------------
+# Entry Point
+# -------------------------
 async def entrypoint(ctx: JobContext):
-    # Logging setup
-    # Add any other context you want in all log entries here
-    ctx.log_context_fields = {
-        "room": ctx.room.name,
-    }
+    ctx.log_context_fields = {"room": ctx.room.name}
 
-    # Set up a voice AI pipeline using OpenAI, Cartesia, AssemblyAI, and the LiveKit turn detector
     session = AgentSession(
-        # Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
-        # See all available models at https://docs.livekit.io/agents/models/stt/
         stt=deepgram.STT(model="nova-3"),
-        # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
-        # See all available models at https://docs.livekit.io/agents/models/llm/
-        llm=google.LLM(
-                model="gemini-2.5-flash",
-            ),
-        # Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
-        # See all available models as well as voice selections at https://docs.livekit.io/agents/models/tts/
+        llm=google.LLM(model="gemini-2.5-flash"),
         tts=murf.TTS(
-                voice="en-US-matthew", 
-                style="Conversation",
-                tokenizer=tokenize.basic.SentenceTokenizer(min_sentence_len=2),
-                text_pacing=True
-            ),
-        # VAD and turn detection are used to determine when the user is speaking and when the agent should respond
-        # See more at https://docs.livekit.io/agents/build/turns
+            voice="en-US-matthew",  # Default for learn mode
+            style="Conversation",
+            tokenizer=tokenize.basic.SentenceTokenizer(min_sentence_len=2),
+            text_pacing=True
+        ),
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
-        # allow the LLM to generate a response while waiting for the end of turn
-        # See more at https://docs.livekit.io/agents/build/audio/#preemptive-generation
         preemptive_generation=True,
     )
 
-    # To use a realtime model instead of a voice pipeline, use the following session setup instead.
-    # (Note: This is for the OpenAI Realtime API. For other providers, see https://docs.livekit.io/agents/models/realtime/))
-    # 1. Install livekit-agents[openai]
-    # 2. Set OPENAI_API_KEY in .env.local
-    # 3. Add `from livekit.plugins import openai` to the top of this file
-    # 4. Use the following session setup instead of the version above
-    # session = AgentSession(
-    #     llm=openai.realtime.RealtimeModel(voice="marin")
-    # )
+    tutor = TutorAgent()
 
-    # Metrics collection, to measure pipeline performance
-    # For more information, see https://docs.livekit.io/agents/build/metrics/
-    usage_collector = metrics.UsageCollector()
+    # Select different Murf voices based on mode
+    @session.on("assistant_response")
+    def _voice_switch(ev):
+        mode = tutor.mode
+        if mode == "learn":
+            session.tts.voice = "en-US-matthew"
+        elif mode == "quiz":
+            session.tts.voice = "en-US-alicia"
+        elif mode == "teach_back":
+            session.tts.voice = "en-US-ken"
 
-    @session.on("metrics_collected")
-    def _on_metrics_collected(ev: MetricsCollectedEvent):
-        metrics.log_metrics(ev.metrics)
-        usage_collector.collect(ev.metrics)
-
-    async def log_usage():
-        summary = usage_collector.get_summary()
-        logger.info(f"Usage: {summary}")
-
-    ctx.add_shutdown_callback(log_usage)
-
-    # # Add a virtual avatar to the session, if desired
-    # # For other providers, see https://docs.livekit.io/agents/models/avatar/
-    # avatar = hedra.AvatarSession(
-    #   avatar_id="...",  # See https://docs.livekit.io/agents/models/avatar/plugins/hedra
-    # )
-    # # Start the avatar and wait for it to join
-    # await avatar.start(session, room=ctx.room)
-
-    # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(
-        agent=Assistant(),
+        agent=tutor,
         room=ctx.room,
         room_input_options=RoomInputOptions(
-            # For telephony applications, use `BVCTelephony` for best results
-            noise_cancellation=noise_cancellation.BVC(),
+            noise_cancellation=noise_cancellation.BVC()
         ),
     )
 
-    # Join the room and connect to the user
     await ctx.connect()
 
 
