@@ -1,0 +1,41 @@
+{
+  "company": "Zomato",
+  "description": "Zomato is India’s leading food delivery, restaurant discovery, and dining platform.",
+  
+  "faq": [
+    {
+      "question": "What does Zomato do?",
+      "answer": "Zomato helps users discover restaurants, order food online, book tables for dine-in, and access Zomato Pro benefits."
+    },
+    {
+      "question": "What services does Zomato provide?",
+      "answer": "Zomato provides food delivery, restaurant discovery, dining offers, groceries via Blinkit, and restaurant partner tools."
+    },
+    {
+      "question": "Do you have a membership or special offers?",
+      "answer": "Yes, Zomato offers Zomato Gold/Pro which gives discounts, free delivery benefits, and priority access depending on location."
+    },
+    {
+      "question": "Who is Zomato for?",
+      "answer": "Zomato is for customers looking for food delivery or dining options and for restaurants who want to reach more users through online delivery."
+    },
+    {
+      "question": "How can restaurants partner with Zomato?",
+      "answer": "Restaurants can partner with Zomato through the ‘Partner with Zomato’ program, enabling online ordering, marketing, and customer reach."
+    }
+  ],
+
+  "pricing": [
+    {
+      "plan": "Zomato Gold",
+      "details": "Subscription plan offering free delivery benefits and exclusive dining discounts. Prices vary by city."
+    }
+  ],
+
+  "lead_fields_required": [
+    "name",
+    "email",
+    "company",
+    "role"
+  ]
+}
