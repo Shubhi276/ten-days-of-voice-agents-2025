@@ -1,0 +1,17 @@
+{
+  "cases": [
+    {
+      "userName": "John",
+      "securityIdentifier": "12345",
+      "maskedCard": "**** 4242",
+      "transactionAmount": "$249.99",
+      "merchant": "ABC Industries",
+      "location": "New York, USA",
+      "timestamp": "2025-01-14 14:32",
+      "securityQuestion": "What is your favorite color?",
+      "securityAnswer": "blue",
+      "status": "pending_review",
+      "outcomeNote": ""
+    }
+  ]
+}
