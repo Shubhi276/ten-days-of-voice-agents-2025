@@ -1,0 +1,22 @@
+{
+  "items": [
+    { "id": 1, "name": "Whole Wheat Bread", "category": "groceries", "price": 45, "tags": ["bread"] },
+    { "id": 2, "name": "Milk 1L", "category": "groceries", "price": 55, "tags": ["dairy"] },
+    { "id": 3, "name": "Eggs Pack (6)", "category": "groceries", "price": 60, "tags": ["protein"] },
+    { "id": 4, "name": "Peanut Butter 500g", "category": "groceries", "price": 180, "tags": ["spread"] },
+    { "id": 5, "name": "Tomato Ketchup", "category": "groceries", "price": 110, "tags": ["sauce"] },
+
+    { "id": 6, "name": "Potato Chips", "category": "snacks", "price": 30, "tags": ["chips"] },
+    { "id": 7, "name": "Chocolate Bar", "category": "snacks", "price": 40, "tags": ["sweet"] },
+    { "id": 8, "name": "Salted Peanuts", "category": "snacks", "price": 25, "tags": ["nuts"] },
+
+    { "id": 9, "name": "Pasta 500g", "category": "prepared_food", "price": 70, "tags": ["pasta"] },
+    { "id": 10, "name": "Pasta Sauce Jar", "category": "prepared_food", "price": 130, "tags": ["sauce", "pasta"] },
+    { "id": 11, "name": "Ready-to-eat Pizza", "category": "prepared_food", "price": 220, "tags": ["pizza"] },
+    { "id": 12, "name": "Veg Sandwich", "category": "prepared_food", "price": 90, "tags": ["sandwich"] },
+
+    { "id": 13, "name": "Butter 100g", "category": "groceries", "price": 48, "tags": ["dairy"] },
+    { "id": 14, "name": "Bananas (6)", "category": "groceries", "price": 35, "tags": ["fruit"] },
+    { "id": 15, "name": "Sugar 1kg", "category": "groceries", "price": 52, "tags": ["pantry"] }
+  ]
+}

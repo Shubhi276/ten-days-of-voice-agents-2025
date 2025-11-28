@@ -1,4 +1,9 @@
 import logging
+from livekit.agents import function_tool, RunContext
+import json
+import os
+from pathlib import Path
+
 
 from dotenv import load_dotenv
 from livekit.agents import (
@@ -26,11 +31,81 @@ load_dotenv(".env.local")
 class Assistant(Agent):
     def __init__(self) -> None:
         super().__init__(
-            instructions="""You are a helpful voice AI assistant. The user is interacting with you via voice, even if you perceive the conversation as text.
-            You eagerly assist users with their questions by providing information from your extensive knowledge.
-            Your responses are concise, to the point, and without any complex formatting including emojis, asterisks, or other weird symbols.
-            You are curious, friendly, and have a sense of humor.""",
+            instructions="""
+            You are a shopping assistant. You load data from catalog.json and recipes.json using tools.
+            You MUST always answer using ONLY the information loaded from tools.
+            Do NOT make up prices, items, or recipes.
+            Keep answers short.
+            """
         )
+        # Initialize the cart in the class instance so it persists across turns
+        self._cart = {} 
+
+    @function_tool
+    async def load_catalog(self, ctx: RunContext):
+        """Loads the product catalog from catalog.json"""
+        base = Path(__file__).resolve().parent.parent   # backend/
+        path = base / "shared-data" / "catalog.json"
+        with open(path, "r") as f:
+            return json.load(f)
+    
+    @function_tool
+    async def load_recipes(self, ctx: RunContext):
+        """Loads recipes from recipes.json"""
+        base = Path(__file__).resolve().parent.parent
+        path = base / "shared-data" / "recipes.json"
+        with open(path, "r") as f:
+            return json.load(f)
+
+    @function_tool
+    async def add_to_cart(self, ctx: RunContext, item: str, quantity: int):
+        """Add an item to the user's cart"""
+        # Use self._cart instead of ctx.run_state
+        self._cart[item] = self._cart.get(item, 0) + quantity
+        
+        # Return a string description so the LLM knows exactly what happened
+        return f"Added {quantity} of {item}. Current cart: {self._cart}"
+
+    @function_tool
+    async def view_cart(self, ctx: RunContext):
+        """Return the current cart"""
+        # Return the persistent self._cart
+        return self._cart
+
+    @function_tool
+    async def clear_cart(self, ctx: RunContext):
+        """Clear the cart"""
+        self._cart = {}
+        return "Cart cleared."
+    
+    @function_tool
+    async def place_order(self, ctx: RunContext):
+        """
+        Submit the current cart as an order. 
+        Saves the order to 'my_orders.json' and clears the cart.
+        """
+        if not self._cart:
+            return "The cart is empty. Please add items first."
+        
+        # 1. Define where to save the file
+        # This saves it in the same folder as your script
+        file_path = Path(__file__).parent / "my_orders.json"
+        
+        # 2. Prepare the order data
+        order_data = {
+            "order_id": 12345,
+            "items": self._cart,
+            "status": "placed"
+        }
+
+        # 3. Write to the file
+        with open(file_path, "w") as f:
+            json.dump(order_data, f, indent=2)
+        
+        # 4. Clear the cart
+        self._cart = {} 
+        
+        return f"Order placed! I have saved the receipt to {file_path}."
 
     # To add tools, use the @function_tool decorator.
     # Here's an example that adds a simple weather tool.

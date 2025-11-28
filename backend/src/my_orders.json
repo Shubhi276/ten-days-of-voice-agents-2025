@@ -1,0 +1,10 @@
+{
+  "order_id": 12345,
+  "items": {
+    "Potato Chips": 1,
+    "Chocolate Bar": 2,
+    "Whole Wheat Bread": 1,
+    "Peanut Butter 500g": 1
+  },
+  "status": "placed"
+}

@@ -1,0 +1,23 @@
+{
+  "peanut butter sandwich": {
+    "items": [
+      { "name": "Whole Wheat Bread", "quantity": 1 },
+      { "name": "Peanut Butter 500g", "quantity": 1 }
+    ]
+  },
+
+  "pasta for two people": {
+    "items": [
+      { "name": "Pasta 500g", "quantity": 1 },
+      { "name": "Pasta Sauce Jar", "quantity": 1 }
+    ]
+  },
+
+  "simple breakfast": {
+    "items": [
+      { "name": "Eggs Pack (6)", "quantity": 1 },
+      { "name": "Milk 1L", "quantity": 1 },
+      { "name": "Bananas (6)", "quantity": 1 }
+    ]
+  }
+}
