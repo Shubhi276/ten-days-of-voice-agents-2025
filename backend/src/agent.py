@@ -1,4 +1,7 @@
 import logging
+from livekit.agents import function_tool, RunContext
+import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from livekit.agents import (
@@ -12,8 +15,8 @@ from livekit.agents import (
     cli,
     metrics,
     tokenize,
-    # function_tool,
-    # RunContext
+    function_tool,
+    RunContext
 )
 from livekit.plugins import murf, silero, google, deepgram, noise_cancellation
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
@@ -26,11 +29,26 @@ load_dotenv(".env.local")
 class Assistant(Agent):
     def __init__(self) -> None:
         super().__init__(
-            instructions="""You are a helpful voice AI assistant. The user is interacting with you via voice, even if you perceive the conversation as text.
-            You eagerly assist users with their questions by providing information from your extensive knowledge.
-            Your responses are concise, to the point, and without any complex formatting including emojis, asterisks, or other weird symbols.
-            You are curious, friendly, and have a sense of humor.""",
+            instructions="""
+            You are **The Game Master** for a fast-paced fantasy adventure.
+            
+            ### 🛑 CRITICAL RULES (Anti-Looping):
+            1. **KEEP IT SHORT:** Descriptions must be UNDER 2 sentences.
+            2. **NO LOOPS:** Never repeat "you hit" or "you miss" multiple times. Say it once.
+            3. **FAST COMBAT:** Monsters die in 1 hit. Do not drag out fights.
+            4. **THE ENDING:** When the player finds the "Forest Heart" or "Gem", say "You win! The End." and call the `end_game` tool.
+
+            ### 🎬 The Story:
+            - Start: "You are in a dark forest. You see a path. What do you do?"
+            - Goal: Find the Blue Gem.
+            """
         )
+        
+    @function_tool
+    async def end_game(self, ctx: RunContext):
+        """Call this tool IMMEDIATELY when the player wins or the story ends."""
+        print("--- GAME OVER TRIGGERED ---")
+        return "VICTORY! The session is ending now. Goodbye."
 
     # To add tools, use the @function_tool decorator.
     # Here's an example that adds a simple weather tool.
